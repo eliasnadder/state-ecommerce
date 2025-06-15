@@ -14,7 +14,7 @@ use App\Http\Controllers\API\OfficeFollowerController as APIOfficeFollowerContro
 use App\Http\Controllers\OfficeFollowerController;
 
 Route::post('/login', [UserController::class, 'login']);
-Route::post('/register', [UserController::class,'register']);
+Route::post('/register', [UserController::class, 'register']);
 
 Route::group(['middleware' => 'api',], function ($router) {
     Route::post('/logout', [UserController::class, 'logout']);
@@ -29,7 +29,6 @@ Route::group(['middleware' => ['api', 'jwt.auth'], 'prefix' => 'user'], function
     Route::post('/payad', [PropertiesController::class, 'receiveCard']);
 
     Route::post('/WonProStore', [WantedPropertyController::class, 'WonProStore']);
-
 
     Route::post('/updateProfile', [UserController::class, 'updateProfile']);
     Route::get('/getProfile', [UserController::class, 'getProfile']);
@@ -47,8 +46,6 @@ Route::group(['middleware' => ['api', 'jwt.auth'], 'prefix' => 'user'], function
     Route::post('/OfficeStore', [OfficeController::class, 'OfficeStore']);
 
     Route::get('/followOffice/{Id}', [OfficeController::class, 'followOffice']);
-
-
 });
 
 Route::group(['prefix' => 'user'], function () {

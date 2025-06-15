@@ -1,6 +1,7 @@
 <?php
 
 namespace App\Http\Controllers\API;
+
 use App\Models\Property;
 use App\Models\Video;
 use Illuminate\Http\Request;
@@ -12,16 +13,14 @@ use App\Traits\UploadImagesTrait;
 use Tymon\JWTAuth\Facades\JWTAuth;
 use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
+
 class PropertiesController extends Controller
 {
-
     use UploadImagesTrait;
 
     public function propertyStore(Request $request)
     {
-
-
-        $validator = Validator::make($request->all(),[
+        $validator = Validator::make($request->all(), [
             'title' => 'required|string|max:255',
             'description' => 'required|string',
             'price' => 'required|numeric',
@@ -42,10 +41,9 @@ class PropertiesController extends Controller
             'Vurl' => 'nullable|mimes:mp4,mov,avi,wmv|max:10000',
             'is_offer' => 'nullable|boolean',
             'offer_expires_at' => 'required_if:is_offer,true|nullable|date',
-           'currency' => 'nullable|in:SYP,USD,EUR',
+            'currency' => 'nullable|in:SYP,USD,EUR',
             'features' => 'nullable|string',
         ]);
-
 
         try {
             DB::beginTransaction();
@@ -68,13 +66,12 @@ class PropertiesController extends Controller
             } else {
                 $owner_id = $authUser->id;
                 $owner_type = 'App\Models\User';
-
             }
+
             $user = User::find($authUser->id);
-            if($user->ad_counter == 0) {
+            if ($user->ad_counter == 0) {
                 return response()->json(['message' => 'you use the free 2 ads'], 400);
             }
-
 
             $property = Property::create([
                 'owner_id' => $owner_id,
@@ -84,7 +81,7 @@ class PropertiesController extends Controller
                 'description' => $request->description,
                 'price' => $request->price,
                 'location' => $request->location,
-                 'latitude' => floatval(trim($request->latitude)),
+                'latitude' => floatval(trim($request->latitude)),
                 'longitude' => floatval(trim($request->longitude)),
                 'area' => $request->area ? floatval(trim($request->area)) : null,
                 'floor_number' => $request->floor_number, // عمود رقم الطابق
@@ -104,12 +101,11 @@ class PropertiesController extends Controller
             ]);
 
 
-            $path=$this->uploadImage($request->file('url'),'property');
-
-
+            $path = $this->uploadImage($request->file('url'), 'property');
             $property->images()->create([
                 'url' => $path,
             ]);
+            
             if ($request->hasFile('Vurl')) {
                 $file = $request->file('Vurl');
                 $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
@@ -123,8 +119,6 @@ class PropertiesController extends Controller
                         'videoable_id' => $property->id,
                         'videoable_type' => Property::class
                     ]);
-
-
                 } else {
                     return response()->json(['error' => 'Video URL could not be generated'], 400);
                 }
@@ -135,15 +129,14 @@ class PropertiesController extends Controller
             //     $office->ad_counter -= 1;
             //     $office->save();
             // } else {
-                $user->ad_counter -= 1;
-                $user->save();
+            $user->ad_counter -= 1;
+            $user->save();
             // }
 
             return response()->json([
                 'message' => 'تم إنشاء الإعلان بنجاح.',
                 'data' => $property->load('images', 'video'),
             ], 201);
-
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json([
@@ -156,119 +149,118 @@ class PropertiesController extends Controller
     }
 
     public function changePropertyStatus(Request $request, $propertyId)
-{
-    $validator = Validator::make($request->all(), [
-        'status' => 'required|in:available,sold,rented',
-    ]);
+    {
+        $validator = Validator::make($request->all(), [
+            'status' => 'required|in:available,sold,rented',
+        ]);
 
-    if ($validator->fails()) {
-        return response()->json([
-            'message' => 'بيانات غير صحيحة',
-            'errors' => $validator->errors(),
-        ], 422);
-    }
-
-    try {
-        $authUser = JWTAuth::parseToken()->authenticate();
-
-        if (!$authUser) {
-            return response()->json(['message' => 'غير مصرح'], 401);
+        if ($validator->fails()) {
+            return response()->json([
+                'message' => 'بيانات غير صحيحة',
+                'errors' => $validator->errors(),
+            ], 422);
         }
 
-        $property = Property::find($propertyId);
+        try {
+            $authUser = JWTAuth::parseToken()->authenticate();
+
+            if (!$authUser) {
+                return response()->json(['message' => 'غير مصرح'], 401);
+            }
+
+            $property = Property::find($propertyId);
+
+            if (!$property) {
+                return response()->json(['message' => 'العقار غير موجود'], 404);
+            }
+
+            // تحقق إذا العقار يخص المستخدم أو مكتبه (حسب نظامك)
+            // مثلاً، إذا عندك علاقة بين العقار وصاحب أو المكتب:
+
+            if ($property->owner_id !== $authUser->id) {
+                return response()->json(['message' => 'غير مصرح بتعديل هذا العقار'], 403);
+            }
+
+            // تحديث الحالة
+            $property->status = $request->status;
+            $property->save();
+
+            return response()->json([
+                'message' => 'تم تحديث حالة العقار بنجاح',
+                'property' => $property,
+            ], 200);
+        } catch (\Exception $e) {
+            return response()->json([
+                'message' => 'حدث خطأ أثناء تحديث الحالة',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+    //تابع يجلب جميع العقارات
+    public function index()
+    {
+        $properties = Property::with(['owner', 'images', 'video'])->paginate(20);
+        if (!$properties) {
+            return response()->json(['message' => 'not found'], 404);
+        }
+
+        return response()->json($properties);
+    }
+
+    public function show($id)
+    {
+        $property = Property::find($id);
 
         if (!$property) {
-            return response()->json(['message' => 'العقار غير موجود'], 404);
+            return response()->json(['message' => 'not found'], 404);
         }
-
-        // تحقق إذا العقار يخص المستخدم أو مكتبه (حسب نظامك)
-        // مثلاً، إذا عندك علاقة بين العقار وصاحب أو المكتب:
-
-        if ($property->owner_id !== $authUser->id) {
-            return response()->json(['message' => 'غير مصرح بتعديل هذا العقار'], 403);
-        }
-
-        // تحديث الحالة
-        $property->status = $request->status;
+        $property->views += 1;
         $property->save();
 
+        $relaitedproperties = Property::where('type', $property->type)
+            ->where('ad_type', $property->ad_type)
+            ->with(['owner', 'images', 'video'])->get();
+
+        return response()->json(['property' => $property, 'relaitedproperties' => $relaitedproperties]);
+    }
+
+    public function getPropertyVideos()
+    {
+        $videos = Video::where('videoable_type', Property::class)
+            ->with('videoable') // هذا سيجلب معلومات العقار المرتبط
+            ->get();
+
+        if ($videos->isEmpty()) {
+            return response()->json([
+                'message' => 'لا توجد فيديوهات لعقارات حالياً.',
+                'data' => []
+            ], 404); // يمكن تغيير الكود إلى 200 لو أردت
+        }
+
         return response()->json([
-            'message' => 'تم تحديث حالة العقار بنجاح',
-            'property' => $property,
-        ], 200);
-
-    } catch (\Exception $e) {
-        return response()->json([
-            'message' => 'حدث خطأ أثناء تحديث الحالة',
-            'error' => $e->getMessage(),
-        ], 500);
+            'message' => 'تم جلب فيديوهات العقارات بنجاح.',
+            'data' => $videos
+        ]);
     }
-}
-//تابع يجلب جميع العقارات
-public function index()
-{
-    $properties = Property::with(['owner', 'images', 'video'])->paginate(20);
-    if(!$properties){
-        return response()->json(['message'=>'not found'],404);
+    //تابع بجيب العقارات يلي عليها عرض آخر 3 أيام بدءاً من الأحدث
+    public function getRecentOffers()
+    {
+        // حساب التاريخ قبل 3 أيام
+        $recentDate = now()->subDays(3);
+
+        // جلب العقارات التي عليها عروض خلال آخر 3 أيام
+        $properties = Property::where('is_offer', true)
+            ->where('created_at', '>=', $recentDate)
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        // التحقق من وجود عروض
+        if ($properties->isEmpty()) {
+            return response()->json(['message' => 'لا توجد عروض حالياً'], 200);
+        }
+
+        return response()->json($properties);
     }
-
-    return response()->json($properties);
-}
-
-public function show($id)
-{
-    $property = Property::find($id);
-
-    if(!$property){
-        return response()->json(['message'=>'not found'],404);
-    }
-    $property->views += 1;
-    $property->save();
-
-    $relaitedproperties = Property::where('type',$property->type)
-    ->where('ad_type',$property->ad_type)
-    ->with(['owner', 'images', 'video'])->get();
-
-    return response()->json(['property'=>$property, 'relaitedproperties'=>$relaitedproperties]);
-}
-
-public function getPropertyVideos()
-{
-    $videos = Video::where('videoable_type', Property::class)
-                    ->with('videoable') // هذا سيجلب معلومات العقار المرتبط
-                    ->get();
-
-    if ($videos->isEmpty()) {
-        return response()->json([
-            'message' => 'لا توجد فيديوهات لعقارات حالياً.',
-            'data' => []
-        ], 404); // يمكن تغيير الكود إلى 200 لو أردت
-    }
-
-    return response()->json([
-        'message' => 'تم جلب فيديوهات العقارات بنجاح.',
-        'data' => $videos
-    ]);
-}
-//تابع بجيب العقارات يلي عليها عرض آخر 3 أيام بدءاً من الأحدث
-public function getRecentOffers()
-{
-    // حساب التاريخ قبل 3 أيام
-    $recentDate = now()->subDays(3);
-
-    // جلب العقارات التي عليها عروض خلال آخر 3 أيام
-    $properties = Property::where('is_offer', true)
-        ->where('created_at', '>=', $recentDate)
-        ->orderBy('created_at', 'desc')
-        ->get();
-
-    // التحقق من وجود عروض
-    if ($properties->isEmpty()) {
-        return response()->json(['message' => 'لا توجد عروض حالياً'], 200);
-    }
-
-    return response()->json($properties);
-}
 
 
     public function searchByAdNumber($ad_number)
@@ -292,18 +284,18 @@ public function getRecentOffers()
             $query->where('type', $request->type);
         }
 
-    if ($request->has('views')) {
-        if ($request->views === 'most') {
-            $query->orderBy('views', 'desc');
-        } elseif ($request->views === 'least') {
-            $query->orderBy('views', 'asc');
+        if ($request->has('views')) {
+            if ($request->views === 'most') {
+                $query->orderBy('views', 'desc');
+            } elseif ($request->views === 'least') {
+                $query->orderBy('views', 'asc');
+            }
         }
-    }
         $properties = $query->paginate(20);
 
-    if ($properties->isEmpty()) {
-        return response()->json(['message' => 'Not found'], 404);
-    }
+        if ($properties->isEmpty()) {
+            return response()->json(['message' => 'Not found'], 404);
+        }
 
         return response()->json($properties);
     }
@@ -311,31 +303,31 @@ public function getRecentOffers()
     {
         // $user_id = JWTAuth::user()->office->id;
 
-            $authUser = JWTAuth::user();
-            if ($authUser->office) {
-                $owner_id = $authUser->office->id;
-            } else {
-                $owner_id = $authUser->id;
-            }
+        $authUser = JWTAuth::user();
+        if ($authUser->office) {
+            $owner_id = $authUser->office->id;
+        } else {
+            $owner_id = $authUser->id;
+        }
 
         $request->validate([
             'property_id' => 'required|string|max:255',
             'availability' => 'required|accepted',
         ]);
         $property = Property::where('id', $request->property_id)
-                            ->where('owner',$owner_id)->get();
+            ->where('owner', $owner_id)->get();
 
         if (!$property) {
             return response()->json(['message' => 'Not found'], 404);
         }
 
-        if ($request->availability == $property->is_available ) {
+        if ($request->availability == $property->is_available) {
             return response()->json(['message' => 'its already same'], 400);
         }
         $property->is_available = !$property->is_available;
         $property->save();
 
-        return response()->json(['message'=>'done']);
+        return response()->json(['message' => 'done']);
     }
 
     public function receiveCard(Request $request)
@@ -347,28 +339,28 @@ public function getRecentOffers()
             'expiry_year' => 'required|digits:4',
             'cvv' => 'required|digits_between:3,4',
         ]);
-            $authUser = JWTAuth::user();
+        $authUser = JWTAuth::user();
 
-            if (!$authUser) {
-                return response()->json(['error' => 'Unauthorized'], 401);  // إذا لم يتم العثور على المستخدم
-            }
+        if (!$authUser) {
+            return response()->json(['error' => 'Unauthorized'], 401);  // إذا لم يتم العثور على المستخدم
+        }
 
-            // التحقق مما إذا كان المستخدم مرتبط بمكتب
-            // if ($authUser->office) {
-            //     $owner_id = $authUser->office->id;
-            //     $owner_type = 'App\Models\Office';
+        // التحقق مما إذا كان المستخدم مرتبط بمكتب
+        // if ($authUser->office) {
+        //     $owner_id = $authUser->office->id;
+        //     $owner_type = 'App\Models\Office';
 
-            //     $office = Office::find($authUser->office->id);
-            //     $office->ad_counter += 10;
-            //     $office->save();
-            // } else {
-                $owner_id = $authUser->id;
-                $owner_type = 'App\Models\User';
+        //     $office = Office::find($authUser->office->id);
+        //     $office->ad_counter += 10;
+        //     $office->save();
+        // } else {
+        $owner_id = $authUser->id;
+        $owner_type = 'App\Models\User';
 
-                $user = User::find($authUser->id);
-                $user->ad_counter += 10;
-                $user->save();
-            // }
+        $user = User::find($authUser->id);
+        $user->ad_counter += 10;
+        $user->save();
+        // }
 
 
         // Dummy response
