@@ -105,7 +105,7 @@ class PropertiesController extends Controller
             $property->images()->create([
                 'url' => $path,
             ]);
-            
+
             if ($request->hasFile('Vurl')) {
                 $file = $request->file('Vurl');
                 $fileName = uniqid() . '.' . $file->getClientOriginalExtension();
@@ -221,7 +221,7 @@ class PropertiesController extends Controller
             ->where('ad_type', $property->ad_type)
             ->with(['owner', 'images', 'video'])->get();
 
-        return response()->json(['property' => $property, 'relaitedproperties' => $relaitedproperties]);
+        return response()->json(['property' => $property->with(['owner', 'images', 'video'])->get(), 'relaitedproperties' => $relaitedproperties]);
     }
 
     public function getPropertyVideos()
