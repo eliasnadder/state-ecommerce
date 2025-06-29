@@ -16,7 +16,6 @@ return new class extends Migration
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
             $table->foreignId('property_id')->constrained()->onDelete('cascade');
             $table->decimal('amount', 12, 2);
-            $table->boolean('is_fake')->default(false);
             $table->timestamps();
         });
     }

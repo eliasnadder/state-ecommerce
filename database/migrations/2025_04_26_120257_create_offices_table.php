@@ -13,12 +13,14 @@ return new class extends Migration
     {
         Schema::create('offices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->morphs('owner'); //ممكن يكون المالك مستخدم او وسيط في المسقبل
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('location')->nullable();
-            $table->integer('views')->default(0);
-            $table->float('rating')->default(0);
+            // $table->string('ad_counter')->default('2');
+
+            $table->unsignedBigInteger('followers_count')->default(0);
+            $table->unsignedBigInteger('views')->default(0);
             $table->timestamps();
         });
     }

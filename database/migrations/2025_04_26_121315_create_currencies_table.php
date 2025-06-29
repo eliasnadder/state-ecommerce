@@ -15,7 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('code')->unique();
             $table->string('symbol');
-            $table->float('rate_to_default')->default(1);
+            $table->float('rate_to_default')->default(1); 
             $table->timestamps();
         });
     }

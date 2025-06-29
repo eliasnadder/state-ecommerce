@@ -13,8 +13,9 @@ return new class extends Migration
     {
         Schema::create('videos', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('videoable_id');
-            $table->string('url');
+            //$table->foreignId('properties_id')->constrained()->onDelete('cascade');
+            $table->morphs('videoable');
+            $table->string('Vurl');
             $table->timestamps();
         });
     }

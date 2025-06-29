@@ -13,26 +13,30 @@ return new class extends Migration
     {
         Schema::create('properties', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->foreignId('office_id')->nullable()->constrained()->onDelete('cascade');
+           $table->morphs('owner');// ممكن يكون تابع للمستخدم و ممكن يكون للمكتب
+           $table->string('ad_number')->unique();
             $table->string('title');
-            $table->text('description')->nullable();
+            $table->text('description');
             $table->decimal('price', 12, 2);
-            $table->string('location')->nullable();
-            $table->string('type');
+            $table->string('location');
+            $table->decimal('latitude', 10, 7);
+            $table->decimal('longitude', 10, 7);
+            $table->decimal('area', 10, 2)->nullable();
+            $table->integer('floor_number')->nullable();
+            $table->enum('ad_type', ['sale', 'rent'])->default('sale');
+           $table->enum('type', ['apartment', 'villa', 'office', 'land', 'commercial','farm','building','chalet'])->default('apartment');
             $table->enum('status', ['available', 'sold', 'rented'])->default('available');
             $table->boolean('is_offer')->default(false);
             $table->timestamp('offer_expires_at')->nullable();
             $table->string('currency')->default('USD');
             $table->integer('views')->default(0);
-            $table->integer('property_type_id')->nullable();
-            $table->integer('bathrooms')->nullable();
-            $table->integer('rooms')->nullable();
+            $table->integer('bathrooms');
+            $table->integer('rooms');
             $table->enum('seller_type', ['owner', 'agent', 'developer'])->default('owner');
-            $table->string('direction')->nullable();
-            $table->string('condition')->nullable();
-            $table->enum('furnishing', ['furnished', 'unfurnished', 'semi-furnished'])->nullable();
+            $table->string('direction');
+            $table->enum('furnishing', ['furnished', 'unfurnished', 'semi-furnished']);
             $table->text('features')->nullable();
+            $table->boolean('is_available')->default(true);
             $table->timestamps();
         });
     }
@@ -40,8 +44,10 @@ return new class extends Migration
     /**
      * Reverse the migrations.
      */
-    public function down(): void
+    public function down()
     {
-        Schema::dropIfExists('properties');
+        Schema::table('properties', function (Blueprint $table) {
+            $table->dropColumn('ad_number');
+        });
     }
 };
