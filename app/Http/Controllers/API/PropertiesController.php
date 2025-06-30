@@ -241,7 +241,7 @@ class PropertiesController extends Controller
 
     public function show($id)
     {
-        $property = Property::find($id)->with(['owner', 'images', 'video'])->get();
+        $property = Property::find($id);
 
         if (!$property) {
             return response()->json(['message' => 'not found'], 404);
@@ -253,7 +253,7 @@ class PropertiesController extends Controller
             ->where('ad_type', $property->ad_type)
             ->with(['owner', 'images', 'video'])->get();
 
-        return response()->json(['property' => $property, 'relaitedproperties' => $relaitedproperties]);
+        return response()->json(['property' => $property->with(['owner', 'images', 'video'])->get(), 'relaitedproperties' => $relaitedproperties]);
     }
 
     public function getPropertyVideos()
