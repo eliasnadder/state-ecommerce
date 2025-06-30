@@ -35,6 +35,7 @@ Route::group(['middleware' => ['api', 'jwt.auth'], 'prefix' => 'user'], function
     Route::post('/addToFavorites', [FavoriteController::class, 'addToFavorites']);
     Route::post('/removeFromFavorites', [FavoriteController::class, 'removeFromFavorites']);
     Route::get('/getFavorites', [FavoriteController::class, 'getFavorites']);
+    Route::get('/is-favorited', [FavoriteController::class, 'isFavorited']);
 
     Route::get('/rateOffice/{office_id}', [ReviewController::class, 'rateOffice']);
 
